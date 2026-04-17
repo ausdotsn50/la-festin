@@ -48,7 +48,7 @@ public class ConfigLoader {
      */
     public static String get(String key) {
         String value = props.getProperty(key);
-        if (value == null || value.isBlank()) {
+        if (value == null) {
             throw new RuntimeException(
                 "[ConfigLoader] Missing required property: '" + key + "' in " + CONFIG_FILE
             );

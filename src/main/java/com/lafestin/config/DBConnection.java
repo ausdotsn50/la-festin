@@ -29,18 +29,22 @@ public class DBConnection {
     }
 
     private void connect() {
-        try {
-            this.connection = DriverManager.getConnection(URL, USER, PASSWORD);
-            System.out.println("[DBConnection] Connected to MySQL at: " + URL);
-        } catch (SQLException e) {
-            throw new RuntimeException(
-                "[DBConnection] Failed to connect to MySQL.\n" +
-                "  → Is MySQL running? Check XAMPP or your local MySQL service.\n" +
-                "  → URL: " + URL + "\n" +
-                "  → User: " + USER, e
-            );
-        }
+    try {
+        this.connection = DriverManager.getConnection(URL, USER, PASSWORD);
+        System.out.println("[DBConnection] Connected to MySQL at: " + URL);
+    } catch (SQLException e) {
+        // Print the full exception chain so nothing is hidden
+        System.err.println("[DBConnection] Failed to connect.");
+        System.err.println("  → URL:   " + URL);
+        System.err.println("  → User:  " + USER);
+        System.err.println("  → SQLState:    " + e.getSQLState());
+        System.err.println("  → ErrorCode:   " + e.getErrorCode());
+        System.err.println("  → Message:     " + e.getMessage());
+        // Print the full stack trace so the root cause is visible
+        e.printStackTrace();
+        throw new RuntimeException("DB connection failed.", e);
     }
+}
 
     public static DBConnection getInstance() {
         if (instance == null) {
