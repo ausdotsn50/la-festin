@@ -1,75 +1,89 @@
 -- ============================================================
---  La Festin — Database Schema
---  Run this file once to set up all 6 tables.
---  Order matters: parent tables before child tables.
+--  La Festin — Full Schema Setup
+--  Safe to re-run: drops and recreates all tables cleanly.
+--  Run with:
+--  mysql -u root -p < sql/la_festin_schema.sql
 -- ============================================================
 
+-- ── Database ──────────────────────────────────────────────
 CREATE DATABASE IF NOT EXISTS la_festin
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_unicode_ci;
 
 USE la_festin;
 
--- ============================================================
---  1. user
---  Parent table — referenced by recipe, pantry, meal_entry
--- ============================================================
-CREATE TABLE IF NOT EXISTS user (
-    user_id       INT             NOT NULL AUTO_INCREMENT,
-    username      VARCHAR(50)     NOT NULL,
-    password_hash VARCHAR(255)    NOT NULL,
+-- ── Safety: drop in reverse dependency order ──────────────
+-- Child tables first, parent tables last.
+-- Prevents FK constraint errors on re-run.
+SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE IF EXISTS meal_entry;
+DROP TABLE IF EXISTS pantry;
+DROP TABLE IF EXISTS recipe_ingredient;
+DROP TABLE IF EXISTS recipe;
+DROP TABLE IF EXISTS ingredient;
+DROP TABLE IF EXISTS user;
+SET FOREIGN_KEY_CHECKS = 1;
 
-    CONSTRAINT pk_user        PRIMARY KEY (user_id),
-    CONSTRAINT uq_username    UNIQUE      (username)
+-- ============================================================
+--  TABLE 1: user
+--  No dependencies — created first.
+-- ============================================================
+CREATE TABLE user (
+    user_id       INT          NOT NULL AUTO_INCREMENT,
+    username      VARCHAR(50)  NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+
+    CONSTRAINT pk_user     PRIMARY KEY (user_id),
+    CONSTRAINT uq_username UNIQUE      (username)
 );
 
 -- ============================================================
---  2. ingredient
---  Parent table — referenced by recipe_ingredient, pantry
+--  TABLE 2: ingredient
+--  No dependencies — created alongside user.
 -- ============================================================
-CREATE TABLE IF NOT EXISTS ingredient (
-    ingredient_id INT             NOT NULL AUTO_INCREMENT,
-    name          VARCHAR(100)    NOT NULL,
+CREATE TABLE ingredient (
+    ingredient_id INT          NOT NULL AUTO_INCREMENT,
+    name          VARCHAR(100) NOT NULL,
 
-    CONSTRAINT pk_ingredient  PRIMARY KEY (ingredient_id),
-    CONSTRAINT uq_ingredient  UNIQUE      (name)
+    CONSTRAINT pk_ingredient PRIMARY KEY (ingredient_id),
+    CONSTRAINT uq_ingredient UNIQUE      (name)
 );
 
 -- ============================================================
---  3. recipe
+--  TABLE 3: recipe
 --  Depends on: user
 -- ============================================================
-CREATE TABLE IF NOT EXISTS recipe (
-    recipe_id     INT             NOT NULL AUTO_INCREMENT,
-    user_id       INT             NOT NULL,
-    title         VARCHAR(150)    NOT NULL,
-    category      ENUM(
-                    'Breakfast',
-                    'Lunch',
-                    'Dinner',
-                    'Snack',
-                    'Dessert'
-                  )               NOT NULL,
-    prep_time     INT             NOT NULL,  -- in minutes
-    `procedure`   TEXT            NOT NULL,
+CREATE TABLE recipe (
+    recipe_id  INT         NOT NULL AUTO_INCREMENT,
+    user_id    INT         NOT NULL,
+    title      VARCHAR(150) NOT NULL,
+    category   ENUM(
+                 'Breakfast',
+                 'Lunch',
+                 'Dinner',
+                 'Snack',
+                 'Dessert'
+               )            NOT NULL,
+    prep_time  INT          NOT NULL,
+    `procedure`  TEXT         NOT NULL,
 
-    CONSTRAINT pk_recipe      PRIMARY KEY (recipe_id),
-    CONSTRAINT fk_recipe_user FOREIGN KEY (user_id)
+    CONSTRAINT pk_recipe       PRIMARY KEY (recipe_id),
+    CONSTRAINT fk_recipe_user  FOREIGN KEY (user_id)
         REFERENCES user (user_id)
         ON DELETE CASCADE
         ON UPDATE CASCADE,
-    CONSTRAINT chk_prep_time  CHECK (prep_time > 0)
+    CONSTRAINT chk_prep_time   CHECK (prep_time > 0)
 );
 
 -- ============================================================
---  4. recipe_ingredient  (junction table)
+--  TABLE 4: recipe_ingredient
 --  Depends on: recipe, ingredient
 -- ============================================================
-CREATE TABLE IF NOT EXISTS recipe_ingredient (
-    recipe_id     INT             NOT NULL,
-    ingredient_id INT             NOT NULL,
-    quantity      DECIMAL(10, 2)  NOT NULL,
-    unit          VARCHAR(50)     NOT NULL,
+CREATE TABLE recipe_ingredient (
+    recipe_id     INT            NOT NULL,
+    ingredient_id INT            NOT NULL,
+    quantity      DECIMAL(10, 2) NOT NULL,
+    unit          VARCHAR(50)    NOT NULL,
 
     CONSTRAINT pk_recipe_ingredient
         PRIMARY KEY (recipe_id, ingredient_id),
@@ -87,17 +101,16 @@ CREATE TABLE IF NOT EXISTS recipe_ingredient (
 );
 
 -- ============================================================
---  5. pantry  (virtual pantry per user)
+--  TABLE 5: pantry
 --  Depends on: ingredient, user
 -- ============================================================
-CREATE TABLE IF NOT EXISTS pantry (
-    ingredient_id INT             NOT NULL,
-    user_id       INT             NOT NULL,
-    quantity      DECIMAL(10, 2)  NOT NULL,
-    unit          VARCHAR(50)     NOT NULL,
+CREATE TABLE pantry (
+    ingredient_id INT            NOT NULL,
+    user_id       INT            NOT NULL,
+    quantity      DECIMAL(10, 2) NOT NULL,
+    unit          VARCHAR(50)    NOT NULL,
 
-    CONSTRAINT pk_pantry
-        PRIMARY KEY (ingredient_id, user_id),
+    CONSTRAINT pk_pantry PRIMARY KEY (ingredient_id, user_id),
     CONSTRAINT fk_pantry_ingredient
         FOREIGN KEY (ingredient_id)
         REFERENCES ingredient (ingredient_id)
@@ -108,22 +121,22 @@ CREATE TABLE IF NOT EXISTS pantry (
         REFERENCES user (user_id)
         ON DELETE CASCADE
         ON UPDATE CASCADE,
-    CONSTRAINT chk_pantry_quantity CHECK (quantity >= 0)
+    CONSTRAINT chk_pantry_qty CHECK (quantity >= 0)
 );
 
 -- ============================================================
---  6. meal_entry
+--  TABLE 6: meal_entry
 --  Depends on: recipe, user
 -- ============================================================
-CREATE TABLE IF NOT EXISTS meal_entry (
-    recipe_id      INT     NOT NULL,
-    user_id        INT     NOT NULL,
+CREATE TABLE meal_entry (
+    recipe_id      INT  NOT NULL,
+    user_id        INT  NOT NULL,
     meal_type      ENUM(
                      'Breakfast',
                      'Lunch',
                      'Dinner'
-                   )        NOT NULL,
-    scheduled_date DATE    NOT NULL,
+                   )     NOT NULL,
+    scheduled_date DATE NOT NULL,
 
     CONSTRAINT pk_meal_entry
         PRIMARY KEY (user_id, scheduled_date, meal_type),
@@ -140,21 +153,14 @@ CREATE TABLE IF NOT EXISTS meal_entry (
 );
 
 -- ============================================================
---  Indexes — speeds up the most common DAO queries
+--  INDEXES
 -- ============================================================
+CREATE INDEX idx_recipe_user  ON recipe          (user_id); 
+CREATE INDEX idx_ri_recipe    ON recipe_ingredient(recipe_id);
+CREATE INDEX idx_pantry_user  ON pantry           (user_id);
+CREATE INDEX idx_me_user_date ON meal_entry       (user_id, scheduled_date);
 
--- recipes by user (RecipeDAO.getAllRecipes)
-CREATE INDEX idx_recipe_user
-    ON recipe (user_id);
-
--- ingredients by recipe (RecipeIngredientDAO.getByRecipeId)
-CREATE INDEX idx_ri_recipe
-    ON recipe_ingredient (recipe_id);
-
--- pantry by user (PantryDAO.getPantryByUser)
-CREATE INDEX idx_pantry_user
-    ON pantry (user_id);
-
--- meal entries by user + date (MealEntryDAO.getByDate / getByWeek)
-CREATE INDEX idx_me_user_date
-    ON meal_entry (user_id, scheduled_date);
+-- ============================================================
+--  DONE
+-- ============================================================
+SELECT 'la_festin schema created successfully.' AS status;
