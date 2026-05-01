@@ -130,63 +130,71 @@ public class RecipeListPanel extends JPanel {
         cardsContainer.repaint();
     }
 
-    private JPanel createRecipeCard(Recipe recipe) {
-        JPanel card = new JPanel(new BorderLayout(10, 10));
-        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 160));
-        card.setPreferredSize(new Dimension(300, 130));
-        card.setBackground(AppTheme.BG_SURFACE);
-        card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+ private JPanel createRecipeCard(Recipe recipe) {
+    // Keep your height at 90
+    JPanel card = new JPanel(new BorderLayout(15, 0));
+    card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 90));
+    card.setPreferredSize(new Dimension(300, 90));
+    card.setBackground(AppTheme.BG_SURFACE);
+    card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-        final Border defaultBorder = new CompoundBorder(
-                BorderFactory.createLineBorder(AppTheme.BG_BORDER, 1, true),
-                BorderFactory.createEmptyBorder(15, 20, 15, 20)
-        );
-        final Border hoverBorder = new CompoundBorder(
-                BorderFactory.createLineBorder(new Color(255, 152, 0), 1, true),
-                BorderFactory.createEmptyBorder(15, 20, 15, 20)
-        );
-        card.setBorder(defaultBorder);
+    // Borders (Keep your logic)
+    final Border defaultBorder = new CompoundBorder(
+            BorderFactory.createLineBorder(AppTheme.BG_BORDER, 1, true),
+            BorderFactory.createEmptyBorder(10, 20, 10, 20) // Reduced top/bottom padding to 10
+    );
+    final Border hoverBorder = new CompoundBorder(
+            BorderFactory.createLineBorder(new Color(255, 152, 0), 1, true),
+            BorderFactory.createEmptyBorder(10, 20, 10, 20)
+    );
+    card.setBorder(defaultBorder);
 
-        // Header: Actions
-        JPanel actionsRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
-        actionsRow.setOpaque(false);
+    JPanel textContainer = new JPanel();
+    textContainer.setLayout(new BoxLayout(textContainer, BoxLayout.Y_AXIS));
+    textContainer.setOpaque(false);
 
-        JButton editBtn = createIconButton("✎", "Edit Recipe", e -> openAddEditPanel(recipe));
-        JButton deleteBtn = createIconButton("✖", "Delete Recipe", e -> deleteRecipe(recipe));
+    JLabel titleLbl = new JLabel("<html>" + recipe.getTitle() + "</html>");
+    titleLbl.setFont(new Font("SansSerif", Font.BOLD, 15));
+    titleLbl.setForeground(AppTheme.TEXT_PRIMARY);
 
-        actionsRow.add(editBtn);
-        actionsRow.add(deleteBtn);
+    JLabel timeLbl = new JLabel("🕒 " + recipe.getFormattedPrepTime());
+    timeLbl.setFont(AppTheme.FONT_SMALL);
+    timeLbl.setForeground(new Color(255, 152, 0));
 
-        // Center: Title
-        JLabel titleLbl = new JLabel("<html>" + recipe.getTitle() + "</html>");
-        titleLbl.setFont(new Font("SansSerif", Font.BOLD, 18));
-        titleLbl.setForeground(AppTheme.TEXT_PRIMARY);
-        titleLbl.setVerticalAlignment(SwingConstants.TOP);
+    textContainer.add(Box.createVerticalGlue()); 
+    textContainer.add(titleLbl);
+    textContainer.add(Box.createVerticalStrut(5));
+    textContainer.add(timeLbl);
+    textContainer.add(Box.createVerticalGlue());
 
-        // Footer: Metadata
-        JPanel bottomRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
-        bottomRow.setOpaque(false);
-        JLabel timeLbl = new JLabel("🕒 " + recipe.getFormattedPrepTime());
-        timeLbl.setFont(AppTheme.FONT_SMALL);
-        timeLbl.setForeground(new Color(255, 152, 0));
-        bottomRow.add(timeLbl);
+    JPanel rightActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+    rightActions.setOpaque(false);
+    JPanel rightWrapper = new JPanel(new GridBagLayout()); 
+    rightWrapper.setOpaque(false);
 
-        card.add(actionsRow, BorderLayout.NORTH);
-        card.add(titleLbl, BorderLayout.CENTER);
-        card.add(bottomRow, BorderLayout.SOUTH);
+    JButton editBtn = createIconButton("✎", "Edit Recipe", e -> openAddEditPanel(recipe));
+    JButton deleteBtn = createIconButton("✖", "Delete Recipe", e -> deleteRecipe(recipe));
 
-        // Interaction
-        card.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) { openDetailPanel(recipe); }
-            @Override
-            public void mouseEntered(MouseEvent e) { card.setBorder(hoverBorder); }
-            @Override
-            public void mouseExited(MouseEvent e) { card.setBorder(defaultBorder); }
-        });
+    rightActions.add(editBtn);
+    rightActions.add(deleteBtn);
+    rightWrapper.add(rightActions);
 
-        return card;
-    }
+    // Assemble
+    card.add(textContainer, BorderLayout.CENTER);
+    card.add(rightWrapper, BorderLayout.EAST);
+
+    // Interaction (Keep your logic)
+    card.addMouseListener(new MouseAdapter() {
+        @Override
+        public void mouseClicked(MouseEvent e) { openDetailPanel(recipe); }
+        @Override
+        public void mouseEntered(MouseEvent e) { card.setBorder(hoverBorder); }
+        @Override
+        public void mouseExited(MouseEvent e) { card.setBorder(defaultBorder); }
+    });
+
+    return card;
+}
 
     public void loadRecipes() {
         try {
